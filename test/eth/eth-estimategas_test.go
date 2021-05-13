@@ -24,9 +24,9 @@ package test
 import (
 	"testing"
 
-	web3 "github.com/regcostajr/go-web3"
-	"github.com/regcostajr/go-web3/dto"
-	"github.com/regcostajr/go-web3/providers"
+	web3 "github.com/cellcycle/go-web3"
+	"github.com/cellcycle/go-web3/dto"
+	"github.com/cellcycle/go-web3/providers"
 	"math/big"
 )
 

@@ -30,7 +30,7 @@ import (
 
 	"encoding/json"
 
-	"github.com/regcostajr/go-web3/providers/util"
+	"github.com/cellcycle/go-web3/providers/util"
 )
 
 type HTTPProvider struct {

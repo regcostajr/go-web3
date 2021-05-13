@@ -1,5 +1,0 @@
-package: github.com/regcostajr/go-web3
-import:
-- package: golang.org/x/net
-  subpackages:
-  - websocket
