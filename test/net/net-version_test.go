@@ -26,8 +26,8 @@ import (
 	"sort"
 	"testing"
 
-	web3 "github.com/regcostajr/go-web3"
-	"github.com/regcostajr/go-web3/providers"
+	web3 "github.com/cellcycle/go-web3"
+	"github.com/cellcycle/go-web3/providers"
 )
 
 func TestNetVersion(t *testing.T) {
@@ -35,7 +35,7 @@ func TestNetVersion(t *testing.T) {
 	var connection = web3.NewWeb3(providers.NewHTTPProvider("127.0.0.1:8545", 10, false))
 
 	//Possible options
-	po := []string{"1", "2", "3", "4", "42"}
+    po := []string{"1", "1337", "2", "3", "4", "42"}
 
 	version, err := connection.Net.GetVersion()
 

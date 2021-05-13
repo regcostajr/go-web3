@@ -23,8 +23,8 @@ package test
 import (
 	"testing"
 
-	"github.com/regcostajr/go-web3"
-	"github.com/regcostajr/go-web3/providers"
+	"github.com/cellcycle/go-web3"
+	"github.com/cellcycle/go-web3/providers"
 )
 
 func TestPersonalListAccounts(t *testing.T) {

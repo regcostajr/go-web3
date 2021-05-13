@@ -23,11 +23,11 @@ package eth
 
 import (
 	"errors"
-	"github.com/regcostajr/go-web3/complex/types"
-	"github.com/regcostajr/go-web3/dto"
-	"github.com/regcostajr/go-web3/eth/block"
-	"github.com/regcostajr/go-web3/providers"
-	"github.com/regcostajr/go-web3/utils"
+	"github.com/cellcycle/go-web3/complex/types"
+	"github.com/cellcycle/go-web3/dto"
+	"github.com/cellcycle/go-web3/eth/block"
+	"github.com/cellcycle/go-web3/providers"
+	"github.com/cellcycle/go-web3/utils"
 	"math/big"
 	"strings"
 )
@@ -46,26 +46,6 @@ func NewEth(provider providers.ProviderInterface) *Eth {
 
 func (eth *Eth) Contract(jsonInterface string) (*Contract, error) {
 	return eth.NewContract(jsonInterface)
-}
-
-// GetProtocolVersion - Returns the current ethereum protocol version.
-// Reference: https://github.com/ethereum/wiki/wiki/JSON-RPC#eth_protocolversion
-// Parameters:
-//    - none
-// Returns:
-// 	  - String - The current ethereum protocol version
-func (eth *Eth) GetProtocolVersion() (string, error) {
-
-	pointer := &dto.RequestResult{}
-
-	err := eth.provider.SendRequest(pointer, "eth_protocolVersion", nil)
-
-	if err != nil {
-		return "", err
-	}
-
-	return pointer.ToString()
-
 }
 
 // IsSyncing - Returns an object with data about the sync status or false.
