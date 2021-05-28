@@ -47,6 +47,10 @@ func (s ComplexString) ToString() string {
 
 }
 
+func (s ComplexString) ToBytes() []byte {
+	return []byte(s)
+}
+
 func (s ComplexString) clean(str string) string {
 	b := make([]byte, len(str))
 	var bl int

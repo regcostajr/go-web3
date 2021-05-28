@@ -13,29 +13,50 @@
 *********************************************************************************/
 
 /**
- * @file default-block-number.go
+ * @file utils.go
  * @authors:
  *   Reginaldo Costa <regcostajr@gmail.com>
  * @date 2017
  */
 
-package block
+package web3
 
 import (
 	"github.com/cellcycle/go-web3/complex/types"
+	"github.com/cellcycle/go-web3/dto"
+	"github.com/cellcycle/go-web3/providers"
 )
 
-// NUMBER - An integer block number
-// Reference: https://github.com/ethereum/wiki/wiki/JSON-RPC#the-default-block-parameter
-func NUMBER(blocknumber *types.ComplexBigInt) string {
-	return blocknumber.ToHex()
+// Utils - The Utils Module
+type Utils struct {
+	provider providers.ProviderInterface
 }
 
-const (
-	// EARLIEST - Earliest block
-	EARLIEST string = "earliest"
-	// LATEST - latest block
-	LATEST string = "latest"
-	// PENDING - Pending block
-	PENDING string = "pending"
-)
+// NewUtils - Utils Module constructor to set the default provider
+func NewUtils(provider providers.ProviderInterface) *Utils {
+	utils := new(Utils)
+	utils.provider = provider
+	return utils
+}
+
+// Sha3 - Returns Keccak-256 (not the standardized SHA3-256) of the given data.
+// Reference: https://github.com/ethereum/wiki/wiki/JSON-RPC#web3_sha3
+//    - DATA - the data to convert into a SHA3 hash
+// Returns:
+// 	  - DATA - The SHA3 result of the given string.
+func (utils *Utils) Sha3(data types.ComplexString) (string, error) {
+
+	params := make([]string, 1)
+	params[0] = data.ToHex()
+
+	pointer := &dto.RequestResult{}
+
+	err := utils.provider.SendRequest(pointer, "web3_sha3", params)
+
+	if err != nil {
+		return "", err
+	}
+
+	return pointer.ToString()
+
+}

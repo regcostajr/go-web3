@@ -13,29 +13,21 @@
 *********************************************************************************/
 
 /**
- * @file default-block-number.go
+ * @file complex-int.go
  * @authors:
  *   Reginaldo Costa <regcostajr@gmail.com>
- * @date 2017
+ * @date 2021
  */
 
-package block
+package types
 
 import (
-	"github.com/cellcycle/go-web3/complex/types"
+	"fmt"
+	"math/big"
 )
 
-// NUMBER - An integer block number
-// Reference: https://github.com/ethereum/wiki/wiki/JSON-RPC#the-default-block-parameter
-func NUMBER(blocknumber *types.ComplexBigInt) string {
-	return blocknumber.ToHex()
+type ComplexBigInt big.Int
+
+func (i ComplexBigInt) ToHex() string {
+	return fmt.Sprintf("0x%x", i)
 }
-
-const (
-	// EARLIEST - Earliest block
-	EARLIEST string = "earliest"
-	// LATEST - latest block
-	LATEST string = "latest"
-	// PENDING - Pending block
-	PENDING string = "pending"
-)

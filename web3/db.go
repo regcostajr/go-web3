@@ -13,7 +13,7 @@
 *********************************************************************************/
 
 /**
- * @file web3.go
+ * @file db.go
  * @authors:
  *   Reginaldo Costa <regcostajr@gmail.com>
  * @date 2017
@@ -24,50 +24,45 @@ package web3
 import (
 	"github.com/cellcycle/go-web3/dto"
 	"github.com/cellcycle/go-web3/providers"
-	web3 "github.com/cellcycle/go-web3/web3"
 )
 
-// Coin - Ethereum value unity value
-const (
-	Coin float64 = 1000000000000000000
-)
-
-// Web3 - The Web3 Module
-type Web3 struct {
-	Provider providers.ProviderInterface
-	Eth      *web3.Eth
-	Net      *web3.Net
-	Personal *web3.Personal
-	Utils    *web3.Utils
+// DB - The DB Module
+type DB struct {
+	provider providers.ProviderInterface
 }
 
-// NewWeb3 - Web3 Module constructor to set the default provider, Eth, Net and Personal
-func NewWeb3(provider providers.ProviderInterface) *Web3 {
-	web3Client := new(Web3)
-	web3Client.Provider = provider
-	web3Client.Eth = web3.NewEth(provider)
-	web3Client.Net = web3.NewNet(provider)
-	web3Client.Personal = web3.NewPersonal(provider)
-	web3Client.Utils = web3.NewUtils(provider)
-	return web3Client
+// NewDB - DB Module constructor to set the default provider
+func NewDB(provider providers.ProviderInterface) *DB {
+	db := new(DB)
+	db.provider = provider
+	return db
 }
 
-// ClientVersion - Returns the current client version.
-// Reference: https://github.com/ethereum/wiki/wiki/JSON-RPC#web3_clientversion
+// PutString - Stores a string in the local database.
+// Note this function is deprecated and will be removed in the future.
+// Reference: https://github.com/ethereum/wiki/wiki/JSON-RPC#db_putstring
 // Parameters:
-//    - none
+//    - String - Database name.
+//	  - String - Key name.
+//    - String - String to store.
 // Returns:
-// 	  - String - The current client version
-func (web Web3) ClientVersion() (string, error) {
+//	  - Boolean - returns true if the value was stored, otherwise false.
+func (db *DB) PutString(databaseName string, keyName string, stringToStore string) (bool, error) {
+
+	params := make([]string, 3)
+
+	params[0] = databaseName
+	params[1] = keyName
+	params[2] = stringToStore
 
 	pointer := &dto.RequestResult{}
 
-	err := web.Provider.SendRequest(pointer, "web3_clientVersion", nil)
+	err := db.provider.SendRequest(pointer, "db_putString", params)
 
 	if err != nil {
-		return "", err
+		return false, err
 	}
 
-	return pointer.ToString()
+	return pointer.ToBoolean()
 
 }

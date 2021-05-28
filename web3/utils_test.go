@@ -13,29 +13,41 @@
 *********************************************************************************/
 
 /**
- * @file default-block-number.go
+ * @file web3-sha3_test.go
  * @authors:
  *   Reginaldo Costa <regcostajr@gmail.com>
  * @date 2017
  */
 
-package block
+package web3
 
 import (
-	"github.com/cellcycle/go-web3/complex/types"
+	"errors"
+	"strings"
+	"testing"
+
+	"github.com/cellcycle/go-web3"
+	"github.com/cellcycle/go-web3/providers"
 )
 
-// NUMBER - An integer block number
-// Reference: https://github.com/ethereum/wiki/wiki/JSON-RPC#the-default-block-parameter
-func NUMBER(blocknumber *types.ComplexBigInt) string {
-	return blocknumber.ToHex()
+func TestUtilsSha3(t *testing.T) {
+
+	var connection = web3.NewWeb3(providers.NewHTTPProvider("127.0.0.1:8545", 10, false))
+
+	sha3String, err := connection.Utils.Sha3("test")
+
+	if err != nil {
+		t.Error(err)
+		t.FailNow()
+	}
+
+	t.Log(sha3String)
+
+	result := strings.Compare("0x9c22ff5f21f0b81b113e63f7db6da94fedef11b2119b4088b89664fb9a3cb658", sha3String)
+
+	if result != 0 {
+		t.Error(errors.New("Sha3 string not equal calculed hash"))
+		t.Fail()
+	}
+
 }
-
-const (
-	// EARLIEST - Earliest block
-	EARLIEST string = "earliest"
-	// LATEST - latest block
-	LATEST string = "latest"
-	// PENDING - Pending block
-	PENDING string = "pending"
-)

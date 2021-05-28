@@ -13,29 +13,28 @@
 *********************************************************************************/
 
 /**
- * @file default-block-number.go
+ * @file ipc-provider_test.go
  * @authors:
  *   Reginaldo Costa <regcostajr@gmail.com>
  * @date 2017
  */
-
-package block
+package providers
 
 import (
-	"github.com/cellcycle/go-web3/complex/types"
+	"testing"
+
+	web3 "github.com/cellcycle/go-web3"
 )
 
-// NUMBER - An integer block number
-// Reference: https://github.com/ethereum/wiki/wiki/JSON-RPC#the-default-block-parameter
-func NUMBER(blocknumber *types.ComplexBigInt) string {
-	return blocknumber.ToHex()
+func Test_IPCProvider(t *testing.T) {
+
+	var ethClient = web3.NewWeb3(providers.NewIPCProvider("/tmp/geth.ipc"))
+
+	var _, error = ethClient.ClientVersion()
+
+	if error != nil {
+		t.Error(error)
+		t.Fail()
+	}
+
 }
-
-const (
-	// EARLIEST - Earliest block
-	EARLIEST string = "earliest"
-	// LATEST - latest block
-	LATEST string = "latest"
-	// PENDING - Pending block
-	PENDING string = "pending"
-)
