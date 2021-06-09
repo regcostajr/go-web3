@@ -28,6 +28,8 @@ import (
 	"github.com/cellcycle/go-web3/complex/types"
 	"github.com/cellcycle/go-web3/dto"
 	"golang.org/x/crypto/sha3"
+	"regexp"
+	"strconv"
 	"strings"
 
 	"math/big"
@@ -104,19 +106,32 @@ func (contract *Contract) prepareTransaction(transaction *dto.TransactionParamet
 	hash.Write([]byte(fullFunction))
 	sha3Function := fmt.Sprintf("0x%x", hash.Sum(nil))
 
-	var data string
+	var static []string
+	var dynamic []string
+
+	offsetCount := contract.calculateOffset(function)
+	offset := offsetCount * 32
 
 	for index := 0; index < len(function); index++ {
-		currentData, err := contract.getHexValue(function[index], args[index])
+		currentData, err := contract.encode(function[index], args[index])
 
 		if err != nil {
 			return nil, err
 		}
 
-		data += currentData
+		if contract.isDynamic(function[index]) {
+			hexOffset, _ := contract.encodeUint(offset, "")
+			static = append(static, hexOffset[0])
+			dynamic = append(dynamic, currentData...)
+			offset = offset + 32
+		}
+
+		static = append(static, currentData...)
 	}
 
-	transaction.Data = types.ComplexString(sha3Function[0:10] + data)
+	static = append(static, dynamic...)
+
+	transaction.Data = types.ComplexString(sha3Function[0:10] + strings.Join(static, ""))
 
 	return transaction, nil
 
@@ -164,6 +179,133 @@ func (contract *Contract) Deploy(transaction *dto.TransactionParameters, bytecod
 
 	return contract.super.SendTransaction(transaction)
 
+}
+
+func (contract *Contract) calculateOffset(args []string) int {
+	offset := 0
+
+	for index := 0; index < len(args); index++ {
+		regex := regexp.MustCompile(`^(?:[a-z]+)(\d+)?(?:(?:\[)(\d+)(?:\]))?`)
+		match := regex.FindStringSubmatch(args[index])
+
+		itemSize := match[1]
+		arraySize := match[2]
+
+		// fixed array size and fixed var size
+		if itemSize != "" && arraySize != "" {
+			i, _ := strconv.Atoi(arraySize)
+			offset += i
+			continue
+		}
+
+		offset++
+	}
+
+	return offset
+}
+
+func (contract *Contract) isDynamic(inputType string) bool {
+
+	regex := regexp.MustCompile(`(\[\])`)
+	match := regex.FindStringSubmatch(inputType)
+
+	// non fixed size array
+	if len(match) > 0 && match[1] != "" {
+		return true
+	}
+
+	regex = regexp.MustCompile(`^(address|uint|int|ufixed|fixed|bool)`)
+	match = regex.FindStringSubmatch(inputType)
+
+	if len(match) > 0 && match[1] != "" {
+		return false
+	}
+
+	regex = regexp.MustCompile(`^(string|bytes)(\d+)?`)
+	match = regex.FindStringSubmatch(inputType)
+
+	if len(match) > 1 && match[2] != "" {
+		return false
+	}
+
+	return true
+
+}
+
+func (contract *Contract) encodeMap(function string) interface{} {
+	methodMap := map[string]interface{}{
+		"string":  contract.encodeString,
+		"int":     contract.encodeInt,
+		"uint":    contract.encodeUint,
+		"address": contract.encodeAddress,
+	}
+
+	return methodMap[function]
+}
+
+func (contract *Contract) encode(inputType string, value interface{}) ([]string, error) {
+	regex := regexp.MustCompile(`^([a-z]+)(\d+)?(\[\d+\])?`)
+	match := regex.FindStringSubmatch(inputType)
+
+	basicType := match[1]
+	itemSize := match[2]
+	array := match[3]
+
+	// array
+	if array != "" {
+		arrayValues := value.([]interface{})
+		var s []string
+		for _, v := range arrayValues {
+			encoded, err := contract.encodeMap(basicType).(func(interface{}, string) ([]string, error))(v, itemSize)
+			if err != nil {
+				return nil, err
+			}
+			s = append(s, encoded...)
+		}
+	}
+
+	return contract.encodeMap(basicType).(func(interface{}, string) ([]string, error))(value, itemSize)
+}
+
+func (contract *Contract) encodeString(value interface{}, _ string) ([]string, error) {
+	var s []string
+
+	size := fmt.Sprintf("%064s", fmt.Sprintf("%x", len(value.(string))))
+	s = append(s, size)
+
+	hex := fmt.Sprintf("%x", value.(string))
+	hex += strings.Repeat("0", 64-len(hex))
+	s = append(s, hex)
+
+	return s, nil
+}
+
+func (contract *Contract) encodeUint(value interface{}, size string) ([]string, error) {
+	bigValue := value.(*big.Int)
+	if bigValue.Cmp(big.NewInt(0)) == -1 {
+		return nil, errors.New(fmt.Sprintf("Int type lower than 0: %s", bigValue.String()))
+	}
+	return contract.encodeInt(value, size)
+}
+
+func (contract *Contract) encodeInt(value interface{}, size string) ([]string, error) {
+	bigValue := value.(*big.Int)
+	if size != "" {
+		intSize, err := strconv.Atoi(size)
+		if err != nil {
+			return nil, errors.New("Invalid size for input type, please check the ABI for typos")
+		}
+
+		if bigValue.BitLen() > intSize {
+			return nil, errors.New(fmt.Sprintf("Input type size does not match with the ABI information: %s, ABI: %d", bigValue.String(), intSize))
+		}
+	}
+	return []string{fmt.Sprintf("%064s", fmt.Sprintf("%x", bigValue.String()))}, nil
+}
+
+func (contract *Contract) encodeAddress(value interface{}, _ string) ([]string, error) {
+	// removes 0x
+	return []string{fmt.Sprintf("%064s", value.(string)[2:])}, nil
 }
 
 func (contract *Contract) getHexValue(inputType string, value interface{}) (string, error) {
