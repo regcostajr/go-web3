@@ -51,6 +51,13 @@ func (s ComplexString) ToBytes() []byte {
 	return []byte(s)
 }
 
+func (s ComplexString) Add0x() ComplexString {
+	if !strings.HasPrefix(string(s), "0x") {
+		s = "0x" + s
+	}
+	return s
+}
+
 func (s ComplexString) clean(str string) string {
 	b := make([]byte, len(str))
 	var bl int

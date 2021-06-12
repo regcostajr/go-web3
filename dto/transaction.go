@@ -25,11 +25,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/cellcycle/go-web3/complex/types"
 	"math/big"
+
+	"github.com/cellcycle/go-web3/complex/types"
 )
 
-// TransactionParameters GO transaction to make more easy controll the parameters
+// TransactionParameters GO transaction to make more easy control the parameters
 type TransactionParameters struct {
 	From     string
 	To       string

@@ -25,15 +25,19 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/cellcycle/go-web3/complex/types"
-	"github.com/cellcycle/go-web3/dto"
-	"golang.org/x/crypto/sha3"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
 
 	"math/big"
+
+	"github.com/cellcycle/go-web3/complex/types"
+	"github.com/cellcycle/go-web3/dto"
+	"golang.org/x/crypto/sha3"
 )
+
+const CONTRACT_CONSTRUCTOR = "constructor"
 
 // Contract ...
 type Contract struct {
@@ -86,25 +90,31 @@ func (eth *Eth) NewContract(abi string) (*Contract, error) {
 
 // prepareTransaction ...
 func (contract *Contract) prepareTransaction(transaction *dto.TransactionParameters, functionName string, args []interface{}) (*dto.TransactionParameters, error) {
-
 	function, ok := contract.functions[functionName]
 	if !ok {
+		// If that is no constructor function just return the same object
+		if functionName == CONTRACT_CONSTRUCTOR {
+			return transaction, nil
+		}
 		return nil, errors.New("Function not found")
 	}
 
-	fullFunction := functionName + "("
+	var sha3Function = ""
+	if functionName != CONTRACT_CONSTRUCTOR {
+		fullFunction := functionName + "("
 
-	comma := ""
-	for arg := range function {
-		fullFunction += comma + function[arg]
-		comma = ","
+		comma := ""
+		for arg := range function {
+			fullFunction += comma + function[arg]
+			comma = ","
+		}
+
+		fullFunction += ")"
+
+		hash := sha3.NewLegacyKeccak256()
+		hash.Write([]byte(fullFunction))
+		sha3Function = fmt.Sprintf("0x%x", hash.Sum(nil))[0:10]
 	}
-
-	fullFunction += ")"
-
-	hash := sha3.NewLegacyKeccak256()
-	hash.Write([]byte(fullFunction))
-	sha3Function := fmt.Sprintf("0x%x", hash.Sum(nil))
 
 	var static []string
 	var dynamic []string
@@ -120,18 +130,18 @@ func (contract *Contract) prepareTransaction(transaction *dto.TransactionParamet
 		}
 
 		if contract.isDynamic(function[index]) {
-			hexOffset, _ := contract.encodeUint(offset, "")
+			hexOffset, _ := contract.encodeUint(big.NewInt(int64(offset)), "")
 			static = append(static, hexOffset[0])
 			dynamic = append(dynamic, currentData...)
 			offset = offset + 32
+		} else {
+			static = append(static, currentData...)
 		}
-
-		static = append(static, currentData...)
 	}
 
 	static = append(static, dynamic...)
 
-	transaction.Data = types.ComplexString(sha3Function[0:10] + strings.Join(static, ""))
+	transaction.Data = types.ComplexString(sha3Function + strings.Join(static, ""))
 
 	return transaction, nil
 
@@ -162,20 +172,14 @@ func (contract *Contract) Send(transaction *dto.TransactionParameters, functionN
 }
 
 func (contract *Contract) Deploy(transaction *dto.TransactionParameters, bytecode string, args ...interface{}) (string, error) {
+	transaction, err := contract.prepareTransaction(transaction, CONTRACT_CONSTRUCTOR, args)
 
-	constructor := contract.functions["constructor"]
-
-	for index := 0; index < len(constructor); index++ {
-		tmpBytes, err := contract.getHexValue(constructor[index], args[index])
-
-		if err != nil {
-			return "", err
-		}
-
-		bytecode += tmpBytes
+	if err != nil {
+		return "", err
 	}
 
-	transaction.Data = types.ComplexString(bytecode)
+	bytecode = strings.TrimSuffix(bytecode, "\n")
+	transaction.Data = types.ComplexString(bytecode).Add0x() + transaction.Data
 
 	return contract.super.SendTransaction(transaction)
 
@@ -244,7 +248,7 @@ func (contract *Contract) encodeMap(function string) interface{} {
 }
 
 func (contract *Contract) encode(inputType string, value interface{}) ([]string, error) {
-	regex := regexp.MustCompile(`^([a-z]+)(\d+)?(\[\d+\])?`)
+	regex := regexp.MustCompile(`^([a-z]+)(\d+)?(\[(\d+)?\])?`)
 	match := regex.FindStringSubmatch(inputType)
 
 	basicType := match[1]
@@ -253,8 +257,15 @@ func (contract *Contract) encode(inputType string, value interface{}) ([]string,
 
 	// array
 	if array != "" {
-		arrayValues := value.([]interface{})
-		var s []string
+		arrayValue := reflect.ValueOf(value)
+		arrayValues := make([]interface{}, arrayValue.Len())
+		for i := 0; i < arrayValue.Len(); i++ {
+			arrayValues[i] = arrayValue.Index(i).Interface()
+		}
+
+		hexOffset, _ := contract.encodeUint(big.NewInt(int64(len(arrayValues))), "")
+		s := []string{hexOffset[0]}
+
 		for _, v := range arrayValues {
 			encoded, err := contract.encodeMap(basicType).(func(interface{}, string) ([]string, error))(v, itemSize)
 			if err != nil {
@@ -262,6 +273,7 @@ func (contract *Contract) encode(inputType string, value interface{}) ([]string,
 			}
 			s = append(s, encoded...)
 		}
+		return s, nil
 	}
 
 	return contract.encodeMap(basicType).(func(interface{}, string) ([]string, error))(value, itemSize)
@@ -300,49 +312,10 @@ func (contract *Contract) encodeInt(value interface{}, size string) ([]string, e
 			return nil, errors.New(fmt.Sprintf("Input type size does not match with the ABI information: %s, ABI: %d", bigValue.String(), intSize))
 		}
 	}
-	return []string{fmt.Sprintf("%064s", fmt.Sprintf("%x", bigValue.String()))}, nil
+	return []string{fmt.Sprintf("%064s", fmt.Sprintf("%x", bigValue))}, nil
 }
 
 func (contract *Contract) encodeAddress(value interface{}, _ string) ([]string, error) {
 	// removes 0x
 	return []string{fmt.Sprintf("%064s", value.(string)[2:])}, nil
-}
-
-func (contract *Contract) getHexValue(inputType string, value interface{}) (string, error) {
-
-	var data string
-
-	if strings.HasPrefix(inputType, "int") ||
-		strings.HasPrefix(inputType, "uint") ||
-		strings.HasPrefix(inputType, "fixed") ||
-		strings.HasPrefix(inputType, "ufixed") {
-
-		bigVal := value.(*big.Int)
-
-		// Checking that the string actually is the correct inputType
-		if strings.Contains(inputType, "128") {
-			// 128 bit
-			if bigVal.BitLen() > 128 {
-				return "", errors.New(fmt.Sprintf("Input type %s not met", inputType))
-			}
-		} else if strings.Contains(inputType, "256") {
-			// 256 bit
-			if bigVal.BitLen() > 256 {
-				return "", errors.New(fmt.Sprintf("Input type %s not met", inputType))
-			}
-		}
-
-		data += fmt.Sprintf("%064s", fmt.Sprintf("%x", bigVal.String()))
-	}
-
-	if strings.Compare("address", inputType) == 0 {
-		data += fmt.Sprintf("%064s", value.(string)[2:])
-	}
-
-	if strings.Compare("string", inputType) == 0 {
-		data += fmt.Sprintf("%064s", fmt.Sprintf("%x", value.(string)))
-	}
-
-	return data, nil
-
 }

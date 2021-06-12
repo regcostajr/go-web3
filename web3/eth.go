@@ -23,12 +23,13 @@ package web3
 
 import (
 	"errors"
+	"math/big"
+	"strings"
+
 	"github.com/cellcycle/go-web3/complex/types"
 	"github.com/cellcycle/go-web3/dto"
 	"github.com/cellcycle/go-web3/eth/block"
 	"github.com/cellcycle/go-web3/providers"
-	"math/big"
-	"strings"
 )
 
 // Eth - The Eth Module

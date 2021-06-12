@@ -24,15 +24,110 @@ package web3
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/cellcycle/go-web3"
-	"github.com/cellcycle/go-web3/dto"
-	"github.com/cellcycle/go-web3/providers"
 	"io/ioutil"
 	"math/big"
 	"testing"
+
+	"github.com/cellcycle/go-web3"
+	"github.com/cellcycle/go-web3/complex/types"
+	"github.com/cellcycle/go-web3/dto"
+	"github.com/cellcycle/go-web3/providers"
 )
 
-func TestEthContract(t *testing.T) {
+func TestABIEncoding(t *testing.T) {
+	abi, err := ioutil.ReadFile("../test/resources/contracts/abi_encoding/ABIEncoding_sol_ABIEncoding.abi")
+	if err != nil {
+		t.Error(err)
+		t.FailNow()
+	}
+
+	bytecode, err := ioutil.ReadFile("../test/resources/contracts/abi_encoding/ABIEncoding_sol_ABIEncoding.bin")
+	if err != nil {
+		t.Error(err)
+		t.FailNow()
+	}
+
+	var connection = web3.NewWeb3(providers.NewHTTPProvider("127.0.0.1:8545", 10, false))
+	contract, err := connection.Eth.NewContract(string(abi))
+	if err != nil {
+		t.Error(err)
+		t.FailNow()
+	}
+
+	transaction := new(dto.TransactionParameters)
+	coinbase, err := connection.Eth.GetCoinbase()
+	if err != nil {
+		t.Error(err)
+		t.FailNow()
+	}
+
+	transaction.From = coinbase
+	transaction.Gas = big.NewInt(4700000)
+	transaction.Data = types.ComplexString(bytecode)
+
+	argsArray := make([]*big.Int, 0)
+	argsArray = append(argsArray, big.NewInt(10), big.NewInt(25))
+
+	hash, err := contract.Deploy(transaction, string(bytecode), argsArray)
+
+	if err != nil {
+		t.Error(err)
+		t.FailNow()
+	}
+
+	var receipt *dto.TransactionReceipt
+
+	for receipt == nil {
+		receipt, err = connection.Eth.GetTransactionReceipt(hash)
+	}
+
+	if err != nil {
+		t.Error(err)
+		t.FailNow()
+	}
+
+	t.Log("Contract Address: ", receipt.ContractAddress)
+	transaction.To = receipt.ContractAddress
+
+	result, err := contract.Call(transaction, "uint_dynamic_array", big.NewInt(0))
+
+	if err != nil {
+		t.Error(err)
+		t.FailNow()
+	}
+
+	firstDecimal, err := result.ToBigInt()
+
+	if err != nil {
+		t.Error(err)
+		t.FailNow()
+	}
+
+	if firstDecimal.Cmp(big.NewInt(10)) != 0 {
+		t.Error("First decimal on deploy is not 10")
+	}
+
+	result, err = contract.Call(transaction, "uint_dynamic_array", big.NewInt(1))
+
+	if err != nil {
+		t.Error(err)
+		t.FailNow()
+	}
+
+	secondDecimal, err := result.ToBigInt()
+
+	if err != nil {
+		t.Error(err)
+		t.FailNow()
+	}
+
+	if secondDecimal.Cmp(big.NewInt(25)) != 0 {
+		t.Error("Second decimal on deploy is not 25")
+	}
+
+}
+
+func TestERC20Contract(t *testing.T) {
 
 	content, err := ioutil.ReadFile("../test/resources/simple-token.json")
 
@@ -54,7 +149,7 @@ func TestEthContract(t *testing.T) {
 	transaction.From = coinbase
 	transaction.Gas = big.NewInt(4000000)
 
-	hash, err := contract.Deploy(transaction, bytecode, nil)
+	hash, err := contract.Deploy(transaction, bytecode)
 
 	if err != nil {
 		t.Error(err)
