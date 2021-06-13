@@ -121,9 +121,10 @@ func (contract *Contract) prepareTransaction(transaction *dto.TransactionParamet
 
 	offsetCount := contract.calculateOffset(function)
 	offset := offsetCount * 32
+	internalArrayOffset := 0
 
 	for index := 0; index < len(function); index++ {
-		currentData, err := contract.encode(function[index], args[index])
+		currentData, err := contract.encode(function[index], args[index], &internalArrayOffset)
 
 		if err != nil {
 			return nil, err
@@ -133,7 +134,7 @@ func (contract *Contract) prepareTransaction(transaction *dto.TransactionParamet
 			hexOffset, _ := contract.encodeUint(big.NewInt(int64(offset)), "")
 			static = append(static, hexOffset[0])
 			dynamic = append(dynamic, currentData...)
-			offset = offset + 32
+			offset = offset + (32 * len(currentData))
 		} else {
 			static = append(static, currentData...)
 		}
@@ -247,7 +248,7 @@ func (contract *Contract) encodeMap(function string) interface{} {
 	return methodMap[function]
 }
 
-func (contract *Contract) encode(inputType string, value interface{}) ([]string, error) {
+func (contract *Contract) encode(inputType string, value interface{}, internalArrayOffset *int) ([]string, error) {
 	regex := regexp.MustCompile(`^([a-z]+)(\d+)?(\[(\d+)?\])?`)
 	match := regex.FindStringSubmatch(inputType)
 
@@ -263,16 +264,36 @@ func (contract *Contract) encode(inputType string, value interface{}) ([]string,
 			arrayValues[i] = arrayValue.Index(i).Interface()
 		}
 
-		hexOffset, _ := contract.encodeUint(big.NewInt(int64(len(arrayValues))), "")
-		s := []string{hexOffset[0]}
+		s := make([]string, 0)
+		if array == "[]" {
+			arraySize, _ := contract.encodeUint(big.NewInt(int64(len(arrayValues))), "")
+			s = append(s, arraySize[0])
+		}
 
-		for _, v := range arrayValues {
+		var static []string
+		var dynamic []string
+
+		for k, v := range arrayValues {
 			encoded, err := contract.encodeMap(basicType).(func(interface{}, string) ([]string, error))(v, itemSize)
 			if err != nil {
 				return nil, err
 			}
-			s = append(s, encoded...)
+
+			if contract.isDynamic(basicType + itemSize) {
+				correctIndex := k + 1
+				if internalArrayOffset != nil {
+					correctIndex = correctIndex + *internalArrayOffset
+					*internalArrayOffset = correctIndex
+				}
+
+				hexOffset, _ := contract.encodeUint(big.NewInt(int64(correctIndex*32)), "")
+				static = append(static, hexOffset[0])
+			}
+			dynamic = append(dynamic, encoded...)
 		}
+
+		s = append(s, static...)
+		s = append(s, dynamic...)
 		return s, nil
 	}
 

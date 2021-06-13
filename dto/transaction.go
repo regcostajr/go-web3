@@ -122,8 +122,8 @@ type TransactionReceipt struct {
 	ContractAddress   string            `json:"contractAddress"`
 	Logs              []TransactionLogs `json:"logs"`
 	LogsBloom         string            `json:"logsBloom"`
-	Root              string            `json:"string"`
 	Status            bool              `json:"status"`
+	Type              *big.Int          `json:"type"`
 }
 
 type TransactionLogs struct {
@@ -247,6 +247,7 @@ func (r *TransactionLogs) UnmarshalJSON(data []byte) error {
 	r.BlockNumber = blockNumLog
 	r.TransactionIndex = txIndexLogs
 	r.LogIndex = logIndex
+
 	return nil
 
 }
@@ -260,6 +261,7 @@ func (r *TransactionReceipt) UnmarshalJSON(data []byte) error {
 		CumulativeGasUsed string `json:"cumulativeGasUsed"`
 		GasUsed           string `json:"gasUsed"`
 		Status            string `json:"status"`
+		Type              string `json:"type"`
 		*Alias
 	}{
 		Alias: (*Alias)(r),
@@ -298,11 +300,17 @@ func (r *TransactionReceipt) UnmarshalJSON(data []byte) error {
 		return errors.New(fmt.Sprintf("Error converting %s to BigInt", temp.Status))
 	}
 
+	stype, success := big.NewInt(0).SetString(temp.Type[2:], 16)
+	if !success {
+		return errors.New(fmt.Sprintf("Error converting %s to BigInt", temp.Type))
+	}
+
 	r.TransactionIndex = txIndex
 	r.BlockNumber = blockNum
 	r.CumulativeGasUsed = cumulativeGas
 	r.GasUsed = gasUsed
 	r.Status = false
+	r.Type = stype
 	if status.Cmp(big.NewInt(1)) == 0 {
 		r.Status = true
 	}

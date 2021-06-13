@@ -69,7 +69,6 @@ func TestABIEncoding(t *testing.T) {
 	argsArray = append(argsArray, big.NewInt(10), big.NewInt(25))
 
 	hash, err := contract.Deploy(transaction, string(bytecode), argsArray)
-
 	if err != nil {
 		t.Error(err)
 		t.FailNow()
@@ -80,7 +79,6 @@ func TestABIEncoding(t *testing.T) {
 	for receipt == nil {
 		receipt, err = connection.Eth.GetTransactionReceipt(hash)
 	}
-
 	if err != nil {
 		t.Error(err)
 		t.FailNow()
@@ -90,14 +88,12 @@ func TestABIEncoding(t *testing.T) {
 	transaction.To = receipt.ContractAddress
 
 	result, err := contract.Call(transaction, "uint_dynamic_array", big.NewInt(0))
-
 	if err != nil {
 		t.Error(err)
 		t.FailNow()
 	}
 
 	firstDecimal, err := result.ToBigInt()
-
 	if err != nil {
 		t.Error(err)
 		t.FailNow()
@@ -105,17 +101,16 @@ func TestABIEncoding(t *testing.T) {
 
 	if firstDecimal.Cmp(big.NewInt(10)) != 0 {
 		t.Error("First decimal on deploy is not 10")
+		t.FailNow()
 	}
 
 	result, err = contract.Call(transaction, "uint_dynamic_array", big.NewInt(1))
-
 	if err != nil {
 		t.Error(err)
 		t.FailNow()
 	}
 
 	secondDecimal, err := result.ToBigInt()
-
 	if err != nil {
 		t.Error(err)
 		t.FailNow()
@@ -123,7 +118,22 @@ func TestABIEncoding(t *testing.T) {
 
 	if secondDecimal.Cmp(big.NewInt(25)) != 0 {
 		t.Error("Second decimal on deploy is not 25")
+		t.FailNow()
 	}
+
+	hash, err = contract.Send(transaction, "testString", "string", []string{"string"}, [2]string{"string", "string"})
+
+	receipt = nil
+	for receipt == nil {
+		receipt, err = connection.Eth.GetTransactionReceipt(hash)
+	}
+
+	if err != nil {
+		t.Error(err)
+		t.FailNow()
+	}
+
+	t.Log(receipt.Logs)
 
 }
 
@@ -161,7 +171,6 @@ func TestERC20Contract(t *testing.T) {
 	for receipt == nil {
 		receipt, err = connection.Eth.GetTransactionReceipt(hash)
 	}
-
 	if err != nil {
 		t.Error(err)
 		t.FailNow()
@@ -172,56 +181,65 @@ func TestERC20Contract(t *testing.T) {
 	transaction.To = receipt.ContractAddress
 
 	result, err := contract.Call(transaction, "name")
-
 	if err != nil {
 		t.Error(err)
 		t.FailNow()
 	}
 
-	if result != nil && err == nil {
-		name, _ := result.ToComplexString()
-		if name.ToString() != "SimpleToken" {
-			t.Errorf(fmt.Sprintf("Name not expected; [Expected %s | Got %s]", "SimpleToken", name.ToString()))
-			t.FailNow()
-		}
+	name, _ := result.ToComplexString()
+	if name.ToString() != "SimpleToken" {
+		t.Errorf(fmt.Sprintf("Name not expected; [Expected %s | Got %s]", "SimpleToken", name.ToString()))
+		t.FailNow()
 	}
 
 	result, err = contract.Call(transaction, "symbol")
-	if result != nil && err == nil {
-		symbol, _ := result.ToComplexString()
-		if symbol.ToString() != "SIM" {
-			t.Errorf("Symbol not expected")
-			t.FailNow()
-		}
+	if err != nil {
+		t.Error(err)
+		t.FailNow()
+	}
+
+	symbol, _ := result.ToComplexString()
+	if symbol.ToString() != "SIM" {
+		t.Errorf("Symbol not expected")
+		t.FailNow()
 	}
 
 	result, err = contract.Call(transaction, "decimals")
-	if result != nil && err == nil {
-		decimals, _ := result.ToBigInt()
-		if decimals.Int64() != 18 {
-			t.Errorf("Decimals not expected")
-			t.FailNow()
-		}
+	if err != nil {
+		t.Error(err)
+		t.FailNow()
+	}
+
+	decimals, _ := result.ToBigInt()
+	if decimals.Int64() != 18 {
+		t.Errorf("Decimals not expected")
+		t.FailNow()
 	}
 
 	bigInt, _ := new(big.Int).SetString("00000000000000000000000000000000000000000000021e19e0c9bab2400000", 16)
 
 	result, err = contract.Call(transaction, "totalSupply")
-	if result != nil && err == nil {
-		total, _ := result.ToBigInt()
-		if total.Cmp(bigInt) != 0 {
-			t.Errorf("Total not expected")
-			t.FailNow()
-		}
+	if err != nil {
+		t.Error(err)
+		t.FailNow()
+	}
+
+	total, _ := result.ToBigInt()
+	if total.Cmp(bigInt) != 0 {
+		t.Errorf("Total not expected")
+		t.FailNow()
 	}
 
 	result, err = contract.Call(transaction, "balanceOf", coinbase)
-	if result != nil && err == nil {
-		balance, _ := result.ToBigInt()
-		if balance.Cmp(bigInt) != 0 {
-			t.Errorf("Balance not expected")
-			t.FailNow()
-		}
+	if err != nil {
+		t.Error(err)
+		t.FailNow()
+	}
+
+	balance, _ := result.ToBigInt()
+	if balance.Cmp(bigInt) != 0 {
+		t.Errorf("Balance not expected")
+		t.FailNow()
 	}
 
 	hash, err = contract.Send(transaction, "approve", coinbase, big.NewInt(10))
