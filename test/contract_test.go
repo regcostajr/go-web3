@@ -46,7 +46,7 @@ func TestABIEncoding(t *testing.T) {
 	argsArray = append(argsArray, 10, 25)
 
 	transaction, err = contract.PrepareTransaction(transaction, contract.Constructor(0), bytecode, argsArray)
-	estimation, err := eth.Eth.EstimateGas(transaction)
+	estimation, err := contractTest.Eth.EstimateGas(transaction)
 	if err != nil {
 		t.Error(err)
 		t.FailNow()
@@ -175,7 +175,7 @@ func TestERC20Contract(t *testing.T) {
 	transaction.From = coinbase
 
 	transaction, err = contract.PrepareTransaction(transaction, contract.Constructor(0), []byte(bytecode))
-	estimation, err := eth.Eth.EstimateGas(transaction)
+	estimation, err := contractTest.Eth.EstimateGas(transaction)
 	if err != nil {
 		t.Error(err)
 		t.FailNow()

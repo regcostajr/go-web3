@@ -2,135 +2,72 @@
 
 [![Build Status](https://travis-ci.org/cellcycle/go-web3.svg?branch=master)](https://travis-ci.org/cellcycle/go-web3)
 
-This is a Ethereum compatible Go Client
+This is a Ethereum compatible RPC client
 
 ## Status
 
-This package is currently under active development. It is not yet stable and there are some RPC methods left to implement (some to fix) and documentation to be done.
+Under active development, use at your own risk
 
-## Usage
+## Why should I use it?
 
-#### Deploying a contract
+This package aims to make things easier while handling RPC calls, contracts and subscriptions.
 
-```go
+If you need to have a full control of what you are doing or you need to go safe on a well tested choice use [ethclient](https://github.com/ethereum/go-ethereum/tree/master/ethclient)
 
-bytecode := ... #contract bytecode
-abi := ... #contract abi
+## Examples
 
-var connection = web3.NewWeb3(providers.NewHTTPProvider("127.0.0.1:8545", 10, false))
-contract, err := connection.Eth.NewContract(abi)
-
-transaction := new(dto.TransactionParameters)
-coinbase, err := connection.Eth.GetCoinbase()
-transaction.From = coinbase
-transaction.Gas = big.NewInt(4000000)
-
-hash, err := contract.Deploy(transaction, bytecode, nil)
-
-fmt.Println(hash)
-
-```
-
-#### Using contract public functions
-
-```go
-
-result, err = contract.Call(transaction, "balanceOf", coinbase)
-if result != nil && err == nil {
-	balance, _ := result.ToComplexIntResponse()
-	fmt.Println(balance.ToBigInt())
-}
-
-```
-
-#### Using contract payable functions
-
-```go
-
-hash, err = contract.Send(transaction, "approve", coinbase, 10)
-
-```
-
-#### Using RPC commands
-
-GetBalance
-
-```go
-
-balance, err := connection.Eth.GetBalance(coinbase, block.LATEST)
-
-```
-
-SendTransaction
-
-```go
-
-transaction := new(dto.TransactionParameters)
-transaction.From = coinbase
-transaction.To = coinbase
-transaction.Value = big.NewInt(10)
-transaction.Gas = big.NewInt(40000)
-transaction.Data = types.String("p2p transaction")
-
-txID, err := connection.Eth.SendTransaction(transaction)
-
-```
-
-
-## Contribute!
-
-#### Before a Pull Request:
-- Create at least one test for your implementation.
-- Don't change the import path to your github username.
-- run `go fmt` for all your changes.
-- run `go test -v ./...`
-
-#### After a Pull Request:
-- Please use the travis log if an error occurs.
-
-### In Progress = ![](https://placehold.it/15/FFFF00/000000?text=+)
-### Partially implemented = ![](https://placehold.it/15/008080/000000?text=+)
-
-TODO List
-
-[] blablabla
+- [Subscription](examples/subscription.go)
+- [RPC](examples/rpc.go)
+- [Deploying a contract](examples/deploy.go)
 
 ## Installation
-
-### go get
 
 ```bash
 go get -u github.com/cellcycle/go-web3
 ```
 
-### glide
+### Requirements and Dependencies
+
+* go ^1.16
+
+This package uses `go mod` to handle the dependencies, just running the following
+command should make them available into your environment
 
 ```bash
-glide get github.com/cellcycle/go-web3
+go mod tidy
 ```
 
-### Requirements
+## Contribute!
 
-* go ^1.8.3
-* golang.org/x/net
+#### Before a Pull Request:
+- If it is an issue please open an issue first so it can be discussed
+- Make sure your implementation have been well tested and you wrote/change a test for it
+- Don't change the import path to your github username
+- run `go fmt` for all your changes.
+- run `go test -v ./...`
+
+#### After a Pull Request:
+- Make sure the Travis tests are passing.
 
 ## Testing
 
-Node running in dev mode:
+The tests require a running Geth node using the development mode:
 
 ```bash
-geth --dev --shh --ws --wsorigins="*" --rpc --rpcapi admin,db,eth,debug,miner,net,shh,txpool,personal,web3 --mine
+./geth --dev --ws --ws.origins="*" --rpc --rpcapi admin,debug,web3,eth,txpool,personal,clique,miner,net --mine --allow-insecure-unlock
 ```
+
+Some tests also require access to Infura so if you need to test them please add the file `infura.conf` to the root folder of this project containing your Infura key
 
 Full test:
 
 ```bash
-go test -v ./test/...
+go test -v ./...
 ```
 
 Individual test:
 ```bash
-go test -v test/modulename/filename.go
+go test -v test/filename.go
 ```
 
 ## License
