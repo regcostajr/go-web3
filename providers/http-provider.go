@@ -29,8 +29,6 @@ import (
 	"time"
 
 	"encoding/json"
-
-	"github.com/cellcycle/go-web3/providers/util"
 )
 
 type HTTPProvider struct {
@@ -58,11 +56,14 @@ func NewHTTPProviderWithClient(address string, timeout int32, secure bool, clien
 
 func (provider HTTPProvider) SendRequest(v interface{}, method string, params interface{}) error {
 
-	bodyString := util.JSONRPCObject{Version: "2.0", Method: method, Params: params, ID: rand.Intn(100)}
+	bodyString := JSONRPCObject{Version: "2.0", Method: method, Params: params, ID: rand.Intn(100)}
 
-	prefix := "http://"
-	if provider.secure {
-		prefix = "https://"
+	prefix := ""
+	if !strings.HasPrefix(provider.address, "http") {
+		prefix = "http://"
+		if provider.secure {
+			prefix = "https://"
+		}
 	}
 
 	body := strings.NewReader(bodyString.AsJsonString())

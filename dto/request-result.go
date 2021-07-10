@@ -23,10 +23,10 @@ package dto
 
 import (
 	"errors"
+	"regexp"
 	"strconv"
 	"strings"
 
-	"github.com/cellcycle/go-web3/complex/types"
 	customerror "github.com/cellcycle/go-web3/constants"
 
 	"encoding/json"
@@ -65,18 +65,6 @@ func (pointer *RequestResult) ToStringArray() ([]string, error) {
 
 }
 
-func (pointer *RequestResult) ToComplexString() (types.ComplexString, error) {
-
-	if err := pointer.checkResponse(); err != nil {
-		return "", err
-	}
-
-	result := (pointer).Result.(interface{})
-
-	return types.ComplexString(result.(string)), nil
-
-}
-
 func (pointer *RequestResult) ToString() (string, error) {
 
 	if err := pointer.checkResponse(); err != nil {
@@ -92,16 +80,21 @@ func (pointer *RequestResult) ToString() (string, error) {
 func (pointer *RequestResult) ToInt() (int64, error) {
 
 	if err := pointer.checkResponse(); err != nil {
-		return 0, err
+		return -1, err
 	}
 
 	result := (pointer).Result.(interface{})
 
 	hex := result.(string)
+	hex = strings.TrimPrefix(hex, "0x")
 
-	numericResult, err := strconv.ParseInt(hex, 16, 64)
+	if hex == "" {
+		return -1, errors.New("empty hex")
+	}
 
-	return numericResult, err
+	decoded, err := strconv.ParseInt(hex, 16, 64)
+
+	return decoded, err
 
 }
 
@@ -116,35 +109,10 @@ func (pointer *RequestResult) ToBigInt() (*big.Int, error) {
 	ret, success := big.NewInt(0).SetString(res.(string)[2:], 16)
 
 	if !success {
-		return nil, errors.New(fmt.Sprintf("Failed to convert %s to BigInt", res.(string)))
+		return nil, errors.New(fmt.Sprintf("error converting %s to big.Int", res.(string)))
 	}
 
 	return ret, nil
-}
-
-func (pointer *RequestResult) ToComplexIntResponse() (types.ComplexIntResponse, error) {
-
-	if err := pointer.checkResponse(); err != nil {
-		return types.ComplexIntResponse(0), err
-	}
-
-	result := (pointer).Result.(interface{})
-
-	var hex string
-
-	switch v := result.(type) {
-	//Testrpc returns a float64
-	case float64:
-		hex = strconv.FormatFloat(v, 'E', 16, 64)
-		break
-	default:
-		hex = result.(string)
-	}
-
-	cleaned := strings.TrimPrefix(hex, "0x")
-
-	return types.ComplexIntResponse(cleaned), nil
-
 }
 
 func (pointer *RequestResult) ToBoolean() (bool, error) {
@@ -157,30 +125,6 @@ func (pointer *RequestResult) ToBoolean() (bool, error) {
 
 	return result.(bool), nil
 
-}
-
-func (pointer *RequestResult) ToSignTransactionResponse() (*SignTransactionResponse, error) {
-	if err := pointer.checkResponse(); err != nil {
-		return nil, err
-	}
-
-	result := (pointer).Result.(map[string]interface{})
-
-	if len(result) == 0 {
-		return nil, customerror.EMPTYRESPONSE
-	}
-
-	signTransactionResponse := &SignTransactionResponse{}
-
-	marshal, err := json.Marshal(result)
-
-	if err != nil {
-		return nil, customerror.UNPARSEABLEINTERFACE
-	}
-
-	err = json.Unmarshal([]byte(marshal), signTransactionResponse)
-
-	return signTransactionResponse, err
 }
 
 func (pointer *RequestResult) ToTransactionResponse() (*TransactionResponse, error) {
@@ -294,6 +238,24 @@ func (pointer *RequestResult) ToSyncingResponse() (*SyncingResponse, error) {
 
 	return syncingResponse, nil
 
+}
+
+func (pointer *RequestResult) ToDataChunks() []string {
+	if err := pointer.checkResponse(); err != nil {
+		return nil
+	}
+
+	result := (pointer).Result.(interface{})
+
+	data := result.(string)
+
+	re := regexp.MustCompile(`(\S{64})`)
+	chunks := re.FindAllStringSubmatch(strings.TrimPrefix(data, "0x"), -1)
+	var dataChunks []string
+	for _, v := range chunks {
+		dataChunks = append(dataChunks, v[0])
+	}
+	return dataChunks
 }
 
 // To avoid a conversion of a nil interface

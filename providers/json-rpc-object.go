@@ -13,21 +13,32 @@
 *********************************************************************************/
 
 /**
- * @file error-constants.go
+ * @file json-rpc-object.go
  * @authors:
  *   Reginaldo Costa <regcostajr@gmail.com>
  * @date 2017
  */
 
-package customerror
+package providers
 
-import "errors"
-
-var (
-	// EMPTYRESPONSE - Server response is empty
-	EMPTYRESPONSE = errors.New("Empty response")
-	// UNPARSEABLEINTERFACE - Conversion failed
-	UNPARSEABLEINTERFACE = errors.New("Unparseable Interface")
-	// WEBSOCKETNOTDENIFIED - Websocket connection does not exists
-	WEBSOCKETNOTDENIFIED = errors.New("Websocket connection does not exists")
+import (
+	"encoding/json"
+	"fmt"
 )
+
+type JSONRPCObject struct {
+	Version string      `json:"jsonrpc"`
+	Method  string      `json:"method"`
+	Params  interface{} `json:"params"`
+	ID      int         `json:"id"`
+}
+
+func (jrpc *JSONRPCObject) AsJsonString() string {
+	resultBytes, err := json.Marshal(jrpc)
+
+	if err != nil {
+		fmt.Println(err)
+		return ""
+	}
+	return string(resultBytes)
+}

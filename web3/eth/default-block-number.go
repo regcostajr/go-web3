@@ -13,21 +13,27 @@
 *********************************************************************************/
 
 /**
- * @file error-constants.go
+ * @file default-block-number.go
  * @authors:
  *   Reginaldo Costa <regcostajr@gmail.com>
  * @date 2017
  */
 
-package customerror
+package eth
 
-import "errors"
+import "fmt"
 
-var (
-	// EMPTYRESPONSE - Server response is empty
-	EMPTYRESPONSE = errors.New("Empty response")
-	// UNPARSEABLEINTERFACE - Conversion failed
-	UNPARSEABLEINTERFACE = errors.New("Unparseable Interface")
-	// WEBSOCKETNOTDENIFIED - Websocket connection does not exists
-	WEBSOCKETNOTDENIFIED = errors.New("Websocket connection does not exists")
+// Reference: https://eth.wiki/json-rpc/API#the-default-block-parameter
+// Receives an integer block number and returns the hexadecimal conversion string
+func NUMBER(blocknumber int64) string {
+	return fmt.Sprintf("0x%x", blocknumber)
+}
+
+const (
+	// EARLIEST - Earliest block
+	EARLIEST string = "earliest"
+	// LATEST - latest block
+	LATEST string = "latest"
+	// PENDING - Pending block
+	PENDING string = "pending"
 )

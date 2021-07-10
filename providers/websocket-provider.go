@@ -22,52 +22,109 @@
 package providers
 
 import (
+	"encoding/json"
+	"errors"
+	customerror "github.com/cellcycle/go-web3/constants"
+	"github.com/cellcycle/go-web3/dto"
 	"math/rand"
+	"strings"
 
-	"github.com/cellcycle/go-web3/constants"
-
-	"github.com/cellcycle/go-web3/providers/util"
-	"golang.org/x/net/websocket"
+	"github.com/gorilla/websocket"
 )
 
 type WebSocketProvider struct {
 	address string
+	secure  bool
 	ws      *websocket.Conn
 }
 
-func NewWebSocketProvider(address string) *WebSocketProvider {
+func NewWebSocketProvider(address string, secure bool) *WebSocketProvider {
 	provider := new(WebSocketProvider)
 	provider.address = address
+	provider.secure = secure
 	return provider
 }
 
-func (provider WebSocketProvider) SendRequest(v interface{}, method string, params interface{}) error {
-
-	bodyString := util.JSONRPCObject{Version: "2.0", Method: method, Params: params, ID: rand.Intn(100)}
-
+func (provider *WebSocketProvider) Connect() error {
 	if provider.ws == nil {
-		ws, err := websocket.Dial(provider.address, "", provider.address)
+
+		prefix := ""
+		if !strings.HasPrefix(provider.address, "ws") {
+			prefix = "ws://"
+			if provider.secure {
+				prefix = "wss://"
+			}
+		}
+
+		url := prefix + provider.address
+
+		ws, _, err := websocket.DefaultDialer.Dial(url, nil)
 		if err != nil {
 			return err
 		}
 		provider.ws = ws
 	}
 
+	return nil
+}
+
+func (provider *WebSocketProvider) SendRequest(method string, params interface{}) (*dto.RequestResult, error) {
+	if provider.ws == nil {
+		return nil, errors.New("connection is closed")
+	}
+
+	bodyString := JSONRPCObject{Version: "2.0", Method: method, Params: params, ID: rand.Intn(100)}
 	message := []byte(bodyString.AsJsonString())
-	_, err := provider.ws.Write(message)
+	err := provider.ws.WriteMessage(websocket.TextMessage, message)
+	if err != nil {
+		return nil, err
+	}
+
+	_, response, err := provider.ws.ReadMessage()
+
+	var requestResult *dto.RequestResult
+	json.Unmarshal(response, &requestResult)
+
+	return requestResult, err
+}
+
+func (provider *WebSocketProvider) Subscribe(ch chan<- *dto.Subscription, method string, params interface{}) error {
+	if provider.ws == nil {
+		return errors.New("connection is closed")
+	}
+
+	bodyString := JSONRPCObject{Version: "2.0", Method: method, Params: params, ID: rand.Intn(100)}
+	message := []byte(bodyString.AsJsonString())
+	err := provider.ws.WriteMessage(websocket.TextMessage, message)
 	if err != nil {
 		return err
 	}
 
-	return websocket.JSON.Receive(provider.ws, v)
+	go func() {
+		defer close(ch)
 
+		for {
+			_, message, err := provider.ws.ReadMessage()
+			if err != nil {
+				return
+			}
+
+			var subscription *dto.Subscription
+			json.Unmarshal(message, &subscription)
+
+			ch <- subscription
+		}
+	}()
+
+	return err
 }
 
-func (provider WebSocketProvider) Close() error {
+func (provider *WebSocketProvider) Close() error {
 	if provider.ws != nil {
-		return provider.ws.Close()
+		err := provider.ws.Close()
+		provider.ws = nil
+		return err
 	}
 
 	return customerror.WEBSOCKETNOTDENIFIED
-
 }

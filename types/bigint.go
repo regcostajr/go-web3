@@ -13,21 +13,43 @@
 *********************************************************************************/
 
 /**
- * @file error-constants.go
+ * @file complex-int.go
  * @authors:
  *   Reginaldo Costa <regcostajr@gmail.com>
- * @date 2017
+ * @date 2021
  */
 
-package customerror
+package types
 
-import "errors"
-
-var (
-	// EMPTYRESPONSE - Server response is empty
-	EMPTYRESPONSE = errors.New("Empty response")
-	// UNPARSEABLEINTERFACE - Conversion failed
-	UNPARSEABLEINTERFACE = errors.New("Unparseable Interface")
-	// WEBSOCKETNOTDENIFIED - Websocket connection does not exists
-	WEBSOCKETNOTDENIFIED = errors.New("Websocket connection does not exists")
+import (
+	"fmt"
+	"math/big"
 )
+
+type BigInt big.Int
+
+func NewBigIntFromInt(numeric int64) *BigInt {
+	bigValue := big.NewInt(numeric)
+	cbi := BigInt(*bigValue)
+	return &cbi
+}
+
+func NewBigInt(numeric *big.Int) *BigInt {
+	bigValue := new(big.Int)
+	bigValue.Set(numeric)
+	cbi := BigInt(*bigValue)
+	return &cbi
+}
+
+func (i BigInt) ToBigInt() *big.Int {
+	bigValue := big.Int(i)
+	return &bigValue
+}
+
+func (i BigInt) ToHex() *String {
+	return NewString(fmt.Sprintf("0x%x", i.ToBigInt()))
+}
+
+func (i BigInt) Cmp(numeric int64) int {
+	return i.ToBigInt().Cmp(big.NewInt(numeric))
+}
