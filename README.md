@@ -35,6 +35,7 @@ command should make them available into your environment
 
 ```bash
 go mod tidy
+go mod vendor
 ```
 
 ## Contribute!
