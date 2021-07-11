@@ -34,7 +34,6 @@ import (
 	"math/big"
 
 	"github.com/cellcycle/go-web3/dto"
-	"github.com/cellcycle/go-web3/utils"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -47,6 +46,7 @@ type Contract struct {
 	Functions   func(string, int) *ABIItem
 	Events      func(string, int) *ABIItem
 	Constructor func(int) *ABIItem
+	Address     string
 }
 
 type ABIItem struct {
@@ -56,7 +56,7 @@ type ABIItem struct {
 	Type            string         `json:"type"`
 	Anonymouns      bool           `json:"anonymous"`
 	Name            string         `json:"name"`
-	Call            func(transaction *dto.TransactionParameters, args ...interface{}) (*dto.RequestResult, error)
+	Call            func(args ...interface{}) (*dto.RequestResult, error)
 	Send            func(transaction *dto.TransactionParameters, args ...interface{}) (string, error)
 }
 
@@ -68,7 +68,7 @@ type ABIItemField struct {
 }
 
 // NewContract - Contract abstraction
-func (eth *Eth) NewContract(abi string) (*Contract, error) {
+func (eth *Eth) NewContract(abi string, address string) (*Contract, error) {
 
 	contract := new(Contract)
 	var abiItems []ABIItem
@@ -81,8 +81,8 @@ func (eth *Eth) NewContract(abi string) (*Contract, error) {
 
 	contract.Functions = func(name string, index int) *ABIItem {
 		function := contract.find(name, index, "function")
-		function.Call = func(transaction *dto.TransactionParameters, args ...interface{}) (*dto.RequestResult, error) {
-			return contract.Call(transaction, function, args...)
+		function.Call = func(args ...interface{}) (*dto.RequestResult, error) {
+			return contract.Call(function, args...)
 		}
 		function.Send = func(transaction *dto.TransactionParameters, args ...interface{}) (string, error) {
 			return contract.Send(transaction, function, args...)
@@ -96,6 +96,7 @@ func (eth *Eth) NewContract(abi string) (*Contract, error) {
 		return contract.find(CONTRACT_CONSTRUCTOR, index, CONTRACT_CONSTRUCTOR)
 	}
 
+	contract.Address = address
 	contract.abi = abiItems
 	contract.super = eth
 
@@ -182,7 +183,10 @@ func (contract *Contract) PrepareTransaction(transaction *dto.TransactionParamet
 	return transaction, nil
 }
 
-func (contract *Contract) Call(transaction *dto.TransactionParameters, function *ABIItem, args ...interface{}) (*dto.RequestResult, error) {
+func (contract *Contract) Call(function *ABIItem, args ...interface{}) (*dto.RequestResult, error) {
+	transaction := new(dto.TransactionParameters)
+	transaction.From = "0x0000000000000000000000000000000000000000"
+	transaction.To = contract.Address
 
 	transaction, err := contract.PrepareTransaction(transaction, function, nil, args...)
 
@@ -195,7 +199,6 @@ func (contract *Contract) Call(transaction *dto.TransactionParameters, function 
 }
 
 func (contract *Contract) Send(transaction *dto.TransactionParameters, function *ABIItem, args ...interface{}) (string, error) {
-
 	transaction, err := contract.PrepareTransaction(transaction, function, nil, args...)
 
 	if err != nil {
@@ -344,15 +347,6 @@ func (contract *Contract) encodeString(value interface{}, _ string) ([]string, e
 	return s, nil
 }
 
-func (contract *Contract) DecodeString(hexString string) (string, error) {
-	data, err := hex.DecodeString(hexString)
-	if err != nil {
-		return "", err
-	}
-
-	return utils.CleanString(string(data)), nil
-}
-
 func (contract *Contract) getBigIntFromFlexibleParameter(value interface{}) *big.Int {
 	iKind := reflect.ValueOf(value).Kind()
 
@@ -376,10 +370,6 @@ func (contract *Contract) encodeUint(value interface{}, size string) ([]string, 
 	return contract.encodeInt(value, size)
 }
 
-func (contract *Contract) DecodeUint(hexString string) *big.Int {
-	return contract.DecodeInt(hexString)
-}
-
 func (contract *Contract) encodeInt(value interface{}, size string) ([]string, error) {
 	bigValue := contract.getBigIntFromFlexibleParameter(value)
 
@@ -396,19 +386,9 @@ func (contract *Contract) encodeInt(value interface{}, size string) ([]string, e
 	return []string{fmt.Sprintf("%064s", fmt.Sprintf("%x", bigValue))}, nil
 }
 
-func (contract *Contract) DecodeInt(hexString string) *big.Int {
-	big := new(big.Int)
-	big.SetString(hexString, 16)
-	return big
-}
-
 func (contract *Contract) encodeAddress(value interface{}, _ string) ([]string, error) {
 	// removes 0x
 	return []string{fmt.Sprintf("%064s", value.(string)[2:])}, nil
-}
-
-func (contract *Contract) DecodeAddress(address string) string {
-	return utils.CleanString(fmt.Sprintf("0x%s", address[len(address)-40:]))
 }
 
 func (contract *Contract) encodeBytes(value interface{}, size string) ([]string, error) {
@@ -426,14 +406,4 @@ func (contract *Contract) encodeBytes(value interface{}, size string) ([]string,
 	s = append(s, hexString)
 
 	return s, nil
-}
-
-func (contract *Contract) decodeBytes(hexString string) ([]byte, error) {
-	strBytes, err := contract.DecodeString(hexString)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return []byte(strBytes), nil
 }

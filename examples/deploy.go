@@ -27,7 +27,7 @@ func main() {
 
 	// deployment starts here
 	web3Client := web3.NewWeb3(providers.NewHTTPProvider("127.0.0.1:8545", 10, false))
-	contract, err := web3Client.Eth.NewContract(unmarshalResponse.Abi)
+	contract, err := web3Client.Eth.NewContract(unmarshalResponse.Abi, "")
 
 	transaction := new(dto.TransactionParameters)
 	coinbase, err := web3Client.Eth.GetCoinbase()

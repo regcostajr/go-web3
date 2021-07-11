@@ -240,7 +240,7 @@ func (pointer *RequestResult) ToSyncingResponse() (*SyncingResponse, error) {
 
 }
 
-func (pointer *RequestResult) ToDataChunks() []string {
+func (pointer *RequestResult) ToDataChunks() DataChunks {
 	if err := pointer.checkResponse(); err != nil {
 		return nil
 	}

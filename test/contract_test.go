@@ -27,7 +27,7 @@ func TestABIEncoding(t *testing.T) {
 		t.FailNow()
 	}
 
-	contract, err := contractTest.Eth.NewContract(string(abi))
+	contract, err := contractTest.Eth.NewContract(string(abi), "")
 	if err != nil {
 		t.Error(err)
 		t.FailNow()
@@ -70,9 +70,10 @@ func TestABIEncoding(t *testing.T) {
 		t.FailNow()
 	}
 
+	contract.Address = receipt.ContractAddress
 	transaction.To = receipt.ContractAddress
 
-	result, err := contract.Functions("uint_dynamic_array", 0).Call(transaction, big.NewInt(0))
+	result, err := contract.Functions("uint_dynamic_array", 0).Call(big.NewInt(0))
 	if err != nil {
 		t.Error(err)
 		t.FailNow()
@@ -89,7 +90,7 @@ func TestABIEncoding(t *testing.T) {
 		t.FailNow()
 	}
 
-	result, err = contract.Functions("uint_dynamic_array", 0).Call(transaction, big.NewInt(1))
+	result, err = contract.Functions("uint_dynamic_array", 0).Call(big.NewInt(1))
 	if err != nil {
 		t.Error(err)
 		t.FailNow()
@@ -119,7 +120,7 @@ func TestABIEncoding(t *testing.T) {
 	}
 
 	log := contractTest.Sha3("TestString(string,string[],string[2])")
-	if receipt.Logs[0].Topics[0] != log {
+	if receipt.Logs[0].Topics.ToString(0) != log {
 		t.Log("topics differs from sha3 conversion")
 		t.Fail()
 	}
@@ -148,7 +149,7 @@ func TestABIEncoding(t *testing.T) {
 	}
 
 	log = contractTest.Sha3("TestBytes(bytes,bytes[],bytes[2],bytes10[2])")
-	if receipt.Logs[0].Topics[0] != log {
+	if receipt.Logs[0].Topics.ToString(0) != log {
 		t.Log("topics differs from sha3 conversion")
 		t.Fail()
 	}
@@ -168,7 +169,7 @@ func TestERC20Contract(t *testing.T) {
 	json.Unmarshal(content, &unmarshalResponse)
 
 	bytecode := unmarshalResponse.Bytecode
-	contract, err := contractTest.Eth.NewContract(unmarshalResponse.Abi)
+	contract, err := contractTest.Eth.NewContract(unmarshalResponse.Abi, "")
 
 	transaction := new(dto.TransactionParameters)
 	coinbase, err := contractTest.Eth.GetCoinbase()
@@ -199,6 +200,7 @@ func TestERC20Contract(t *testing.T) {
 		t.FailNow()
 	}
 
+	contract.Address = receipt.ContractAddress
 	transaction.To = receipt.ContractAddress
 
 	result, err := contract.Functions("name", 0).Call(transaction)
@@ -207,8 +209,7 @@ func TestERC20Contract(t *testing.T) {
 		t.FailNow()
 	}
 
-	chunks := result.ToDataChunks()
-	name, _ := contract.DecodeString(chunks[2])
+	name, _ := result.ToDataChunks().DecodeString(2)
 	if name != "SimpleToken" {
 		t.Errorf(fmt.Sprintf("Name not expected; [Expected %s | Got %s]", "SimpleToken", name))
 		t.FailNow()
@@ -220,8 +221,7 @@ func TestERC20Contract(t *testing.T) {
 		t.FailNow()
 	}
 
-	chunks = result.ToDataChunks()
-	symbol, _ := contract.DecodeString(chunks[2])
+	symbol, _ := result.ToDataChunks().DecodeString(2)
 	if symbol != "SIM" {
 		t.Errorf("Symbol not expected")
 		t.FailNow()
@@ -233,8 +233,7 @@ func TestERC20Contract(t *testing.T) {
 		t.FailNow()
 	}
 
-	chunks = result.ToDataChunks()
-	decimals := contract.DecodeInt(chunks[0])
+	decimals := result.ToDataChunks().DecodeInt(0)
 	if decimals.Int64() != 18 {
 		t.Errorf("Decimals not expected")
 		t.FailNow()
@@ -248,21 +247,19 @@ func TestERC20Contract(t *testing.T) {
 		t.FailNow()
 	}
 
-	chunks = result.ToDataChunks()
-	total := contract.DecodeInt(chunks[0])
+	total := result.ToDataChunks().DecodeInt(0)
 	if total.Cmp(totalSupply) != 0 {
 		t.Errorf("Total not expected")
 		t.FailNow()
 	}
 
-	result, err = contract.Functions("balanceOf", 0).Call(transaction, coinbase)
+	result, err = contract.Functions("balanceOf", 0).Call(coinbase)
 	if err != nil {
 		t.Error(err)
 		t.FailNow()
 	}
 
-	chunks = result.ToDataChunks()
-	balance := contract.DecodeInt(chunks[0])
+	balance := result.ToDataChunks().DecodeInt(0)
 	if balance.Cmp(totalSupply) != 0 {
 		t.Errorf("Balance not expected")
 		t.FailNow()
@@ -291,24 +288,23 @@ func TestERC20Contract(t *testing.T) {
 	}
 
 	log := contractTest.Sha3("Approval(address,address,uint256)")
-	if receipt.Logs[0].Topics[0] != log {
+	if receipt.Logs[0].Topics.ToString(0) != log {
 		t.Log("topics differs from sha3 conversion")
 		t.Fail()
 	}
 
-	if contract.DecodeAddress(receipt.Logs[0].Topics[1]) != coinbase {
+	if receipt.Logs[0].Topics.DecodeAddress(1) != coinbase {
 		t.Log("owner address differs from the topic")
 		t.Fail()
 	}
 
-	if contract.DecodeAddress(receipt.Logs[0].Topics[2]) != newAddress {
+	if receipt.Logs[0].Topics.DecodeAddress(2) != newAddress {
 		t.Log("new address differs from the topic")
 		t.Fail()
 	}
 
-	result, err = contract.Functions("allowance", 0).Call(transaction, coinbase, newAddress)
-	chunks = result.ToDataChunks()
-	allowance := contract.DecodeInt(chunks[0])
+	result, err = contract.Functions("allowance", 0).Call(coinbase, newAddress)
+	allowance := result.ToDataChunks().DecodeInt(0)
 	if allowance.Cmp(approveBalance) != 0 {
 		t.Error("Allowance not expected")
 		t.FailNow()
@@ -356,14 +352,13 @@ func TestERC20Contract(t *testing.T) {
 		receipt, err = contractTest.Eth.GetTransactionReceipt(hash)
 	}
 
-	result, err = contract.Functions("balanceOf", 0).Call(transaction, newAddress)
+	result, err = contract.Functions("balanceOf", 0).Call(newAddress)
 	if err != nil {
 		t.Error(err)
 		t.FailNow()
 	}
 
-	chunks = result.ToDataChunks()
-	balance = contract.DecodeInt(chunks[0])
+	balance = result.ToDataChunks().DecodeInt(0)
 	if balance.Cmp(approveBalance) != 0 {
 		t.Errorf("Balance not expected")
 		t.FailNow()

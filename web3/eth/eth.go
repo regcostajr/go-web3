@@ -40,10 +40,6 @@ func NewEth(provider providers.ProviderInterface) *Eth {
 	return eth
 }
 
-func (eth *Eth) Contract(jsonInterface string) (*Contract, error) {
-	return eth.NewContract(jsonInterface)
-}
-
 // Reference: https://eth.wiki/json-rpc/API#eth_syncing
 func (eth *Eth) IsSyncing() (*dto.SyncingResponse, error) {
 	pointer := &dto.RequestResult{}
@@ -280,6 +276,22 @@ func (eth *Eth) SignTransaction(transaction *dto.TransactionParameters) (string,
 	pointer := &dto.RequestResult{}
 
 	err := eth.provider.SendRequest(&pointer, "eth_signTransaction", params)
+
+	if err != nil {
+		return "", err
+	}
+
+	return pointer.ToString()
+}
+
+// Reference: https://eth.wiki/json-rpc/API#eth_sendRawTransaction
+func (eth *Eth) SendRawTransaction(signedTransaction string) (string, error) {
+	params := make([]string, 1)
+	params[0] = signedTransaction
+
+	pointer := &dto.RequestResult{}
+
+	err := eth.provider.SendRequest(&pointer, "eth_sendRawTransaction", params)
 
 	if err != nil {
 		return "", err

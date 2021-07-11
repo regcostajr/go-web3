@@ -113,15 +113,15 @@ type TransactionReceipt struct {
 }
 
 type TransactionLog struct {
-	Address          string   `json:"address"`
-	Topics           []string `json:"topics"`
-	Data             string   `json:"data"`
-	BlockNumber      *big.Int `json:"blockNumber"`
-	TransactionHash  string   `json:"transactionHash"`
-	TransactionIndex *big.Int `json:"transactionIndex"`
-	BlockHash        string   `json:"blockHash"`
-	LogIndex         *big.Int `json:"logIndex"`
-	Removed          bool     `json:"removed"`
+	Address          string     `json:"address"`
+	Topics           DataChunks `json:"topics"`
+	Data             string     `json:"data"`
+	BlockNumber      *big.Int   `json:"blockNumber"`
+	TransactionHash  string     `json:"transactionHash"`
+	TransactionIndex *big.Int   `json:"transactionIndex"`
+	BlockHash        string     `json:"blockHash"`
+	LogIndex         *big.Int   `json:"logIndex"`
+	Removed          bool       `json:"removed"`
 }
 
 func (t *TransactionResponse) UnmarshalJSON(data []byte) error {

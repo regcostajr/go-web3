@@ -10,9 +10,32 @@ Under active development, use at your own risk
 
 ## Why should I use it?
 
-This package aims to make things easier while handling RPC calls, contracts and subscriptions.
+This package aims to make things easier while handling contracts and subscriptions.
 
-If you need to have a full control of what you are doing or you need to go safe on a well tested choice use [ethclient](https://github.com/ethereum/go-ethereum/tree/master/ethclient)
+You probably want(must) to use the Geth RPC client for production: [ethclient](https://github.com/ethereum/go-ethereum/tree/master/ethclient)
+
+## Usage
+
+#### Simple RPC call
+
+```go
+web3Client := web3.NewWeb3(providers.NewHTTPProvider("127.0.0.1:8545", 10, false))
+coinbase, err := web3Client.Eth.GetCoinbase()
+```
+
+#### Contract Call
+
+```go
+web3Client := ...
+contractAddress := ...
+
+contract, _ := web3Client.Eth.NewContract(abi, contractAddress)
+
+result, _ = contract.Functions("balanceOf", 0).Call(contractAddress)
+balance = result.ToDataChunks().DecodeInt(0)
+
+fmt.Println(balance)
+```
 
 ## Examples
 
@@ -63,7 +86,7 @@ Some tests also require access to Infura so if you need to test them please add 
 Full test:
 
 ```bash
-go test -v ./...
+go test -v ./test/...
 ```
 
 Individual test:
