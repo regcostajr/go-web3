@@ -1,7 +1,6 @@
 language: go
 go:
-    - 1.8.x
-    - 1.10.x
+    - 1.16.x
 go_import_path: github.com/cellcycle/go-web3
 sudo: false
 before_install:
@@ -14,4 +13,7 @@ before_script:
     - geth --dev --ws --ws.origins="*" --rpc --rpcapi admin,debug,web3,eth,txpool,personal,clique,miner,net --mine --allow-insecure-unlock &
     - sleep 5
 script:
+    - go mod tidy
+    - go mod download
+    - go mod vendor
     - go test -v ./test/...
