@@ -11,7 +11,7 @@ before_install:
 install:
     - sudo apt-get install ethereum -y -qq
 before_script:
-    - geth --dev --ws --ws.addr 0.0.0.0 --ws.origins="*" --http --http.addr 0.0.0.0 --http.api admin,debug,web3,eth,txpool,personal,clique,miner,net --mine --ws.api admin,debug,web3,eth,txpool,personal,clique,miner,net --allow-insecure-unlock &
+    - geth --dev --ws --ws.origins="*" --rpc --rpcapi admin,debug,web3,eth,txpool,personal,clique,miner,net --mine --allow-insecure-unlock &
     - sleep 5
 script:
     - go test -v ./test/...

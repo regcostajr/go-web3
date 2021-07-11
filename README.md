@@ -12,7 +12,7 @@ Under active development, use at your own risk
 
 This package aims to make things easier while handling contracts and subscriptions.
 
-You probably want(must) to use the Geth RPC client for production: [ethclient](https://github.com/ethereum/go-ethereum/tree/master/ethclient)
+You probably want(must) use the Geth RPC client for production: [ethclient](https://github.com/ethereum/go-ethereum/tree/master/ethclient)
 
 ## Usage
 
@@ -33,8 +33,6 @@ contract, _ := web3Client.Eth.NewContract(abi, contractAddress)
 
 result, _ = contract.Functions("balanceOf", 0).Call(contractAddress)
 balance = result.ToDataChunks().DecodeInt(0)
-
-fmt.Println(balance)
 ```
 
 ## Examples
